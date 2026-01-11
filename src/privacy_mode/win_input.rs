@@ -209,30 +209,11 @@ pub extern "system" fn privacy_mode_hook_keyboard(
                 return 1;
             }
 
-            match w_param2 {
-                WM_KEYDOWN => {
-                    // Disable all keys other than P and Ctrl.
-                    if ![80, 162, 163].contains(&(*ks).vkCode) {
-                        return 1;
-                    }
-
-                    // NOTE: GetKeyboardState may not work well...
-
-                    // Check if Ctrl + P is pressed
-                    let cltr_down = (GetKeyState(VK_CONTROL) as u16) & (0x8000 as u16) > 0;
-                    let key = LOBYTE((*ks).vkCode as _);
-                    if cltr_down && (key == 'p' as u8 || key == 'P' as u8) {
-                        // Ctrl + P is pressed, turn off privacy mode
-                        if let Some(Err(e)) = super::turn_off_privacy(
-                            super::INVALID_PRIVACY_MODE_CONN_ID,
-                            Some(super::PrivacyModeState::OffByPeer),
-                        ) {
-                            log::error!("Failed to off_privacy {}", e);
-                        }
-                    }
-                }
-                WM_KEYUP => {
-                    log::trace!("WM_KEYUP {}", (*ks).vkCode);
+            // 移除了 Ctrl+P 的特殊处理
+            // 现在所有来自非 enigo 的输入都被阻止
+             match w_param2 {
+                WM_KEYDOWN | WM_KEYUP => {
+                    return 1;
                 }
                 _ => {
                     log::trace!("KEYBOARD OTHER {} {}", w_param2, (*ks).vkCode);

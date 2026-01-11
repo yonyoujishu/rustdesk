@@ -291,7 +291,8 @@ impl Client {
         } else {
             if other_server == PUBLIC_SERVER {
                 (
-                    check_port(RENDEZVOUS_SERVERS[0], RENDEZVOUS_PORT),
+                    //clone() 方法会创建字符串的一个副本，这样既可以将所需的值传递给 check_port 函数，又不会移动原始向量中的元素，保持了向量的完整性。
+                    check_port(RENDEZVOUS_SERVERS[0].clone(), RENDEZVOUS_PORT),
                     RENDEZVOUS_SERVERS[1..]
                         .iter()
                         .map(|x| x.to_string())
@@ -759,7 +760,8 @@ impl Client {
         conn: &mut Stream,
     ) -> ResultType<Option<Vec<u8>>> {
         let rs_pk = get_rs_pk(if key.is_empty() {
-            config::RS_PUB_KEY
+            //语句开头加&，对 config::RS_PUB_KEY 进行借用
+            &config::RS_PUB_KEY
         } else {
             key
         });
@@ -1791,6 +1793,10 @@ impl LoginConfigHandler {
             let args = server_key.next().unwrap_or_default();
             let key = if server == PUBLIC_SERVER {
                 config::RS_PUB_KEY.to_owned()
+               // 将 Vec<&str> 转换为 String（这里假设取第一个元素）
+                // config::RS_PUB_KEY.first()
+                // .map(|s| s.to_owned())
+                // .unwrap_or_default()
             } else {
                 let mut args_map: HashMap<String, &str> = HashMap::new();
                 for arg in args.split('&') {
@@ -2220,7 +2226,8 @@ impl LoginConfigHandler {
             msg.image_quality = q.into();
         } else if q == "custom" {
             let config = self.load_config();
-            let allow_more = !crate::using_public_server() || self.direct == Some(true);
+            // 解除画质和FPS自定义限值
+            let allow_more = true;
             let quality = if config.custom_image_quality.is_empty() {
                 50
             } else {

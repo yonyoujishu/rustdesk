@@ -56,19 +56,87 @@ lazy_static::lazy_static! {
     static ref STATUS: RwLock<Status> = RwLock::new(Status::load());
     static ref TRUSTED_DEVICES: RwLock<(Vec<TrustedDevice>, bool)> = Default::default();
     static ref ONLINE: Mutex<HashMap<String, i64>> = Default::default();
+    //ID服务器列表，读取Repository secrets值
+    pub static ref RENDEZVOUS_SERVERS: Vec<String> = {
+        option_env!("RENDEZVOUS_SERVER").unwrap_or("rs-ny.rustdesk.com")
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .collect()
+    };
+    //公钥，读取Repository secrets值
+    pub static ref RS_PUB_KEY: String = option_env!("RS_PUB_KEY").unwrap_or("OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=").to_string();
     pub static ref PROD_RENDEZVOUS_SERVER: RwLock<String> = RwLock::new("".to_owned());
     pub static ref EXE_RENDEZVOUS_SERVER: RwLock<String> = Default::default();
-    pub static ref APP_NAME: RwLock<String> = RwLock::new("RustDesk".to_owned());
+    //应用名称，读取Repository secrets值
+    pub static ref APP_NAME: RwLock<String> = RwLock::new(
+        option_env!("APP_NAME").unwrap_or("RustDesk").into()
+    );    
     static ref KEY_PAIR: Mutex<Option<KeyPair>> = Default::default();
     static ref USER_DEFAULT_CONFIG: RwLock<(UserDefaultConfig, Instant)> = RwLock::new((UserDefaultConfig::load(), Instant::now()));
     pub static ref NEW_STORED_PEER_CONFIG: Mutex<HashSet<String>> = Default::default();
-    pub static ref DEFAULT_SETTINGS: RwLock<HashMap<String, String>> = Default::default();
+    pub static ref DEFAULT_SETTINGS: RwLock<HashMap<String, String>> = {
+        let mut map = HashMap::new();
+        //PIN解锁，下方有部分修复改功能代码，读取Repository secrets值
+        map.insert(
+            "unlock_pin".to_string(), 
+            option_env!("DEFAULT_PIN").unwrap_or("").into()
+        );
+        //使用DirectX捕获屏幕
+        map.insert("enable-directx-capture".to_string(), "Y".to_string());
+        //访问模式，custom：自定义，full：完全控制，view：共享屏幕
+        map.insert("access-mode".to_string(), "full".to_string());
+        //允许远程重启
+        map.insert("enable-remote-restart".to_string(), "Y".to_string());
+        //允许远程修改配置
+        map.insert("allow-remote-config-modification".to_string(), "Y".to_string());
+        //接受远程方式，password：密码，click：点击，password-click：同时使用
+        map.insert("approve-mode".to_string(), "password".to_string());
+        //密码验证方式，use-temporary-password：一次性密码，use-permanent-password：固定密码，use-both-passwords：同时使用
+        map.insert("verification-method".to_string(), "use-permanent-password".to_string());
+        //隐藏连接管理窗口，approve-mode=password，verification-method=use-permanent-password，才可生效，项目中有修复代码
+        map.insert("allow-hide-cm".to_string(), "Y".to_string());
+        //隐藏托盘图标，approve-mode=password，verification-method=use-permanent-password，才可生效，项目中有修复代码
+        map.insert("hide-tray".to_string(), "Y".to_string());
+        RwLock::new(map)
+    };
     pub static ref OVERWRITE_SETTINGS: RwLock<HashMap<String, String>> = Default::default();
-    pub static ref DEFAULT_DISPLAY_SETTINGS: RwLock<HashMap<String, String>> = Default::default();
+    pub static ref DEFAULT_DISPLAY_SETTINGS: RwLock<HashMap<String, String>> = {
+        let mut map = HashMap::new();
+        //显示模式，adaptive：适应窗口，original：原始尺寸，
+        map.insert("view_style".to_string(), "adaptive".to_string());
+        RwLock::new(map)
+    };
     pub static ref OVERWRITE_DISPLAY_SETTINGS: RwLock<HashMap<String, String>> = Default::default();
-    pub static ref DEFAULT_LOCAL_SETTINGS: RwLock<HashMap<String, String>> = Default::default();
+    pub static ref DEFAULT_LOCAL_SETTINGS: RwLock<HashMap<String, String>> = {
+        let mut map = HashMap::new();
+        //主题色，dark：深色，light：浅色，system：跟随系统
+        map.insert("theme".to_string(), "system".to_string());
+        //使用D3D渲染
+        map.insert("allow-d3d-render".to_string(), "Y".to_string());
+        //启动时检查软件更新
+        map.insert("enable-check-update".to_string(), "N".to_string());
+        //自动更新
+        map.insert("allow-auto-update".to_string(), "N".to_string());
+        //启用UDP打洞
+        map.insert("enable-udp-punch".to_string(), "Y".to_string());
+        //启用IPv6 P2P连接
+        map.insert("enable-ipv6-punch".to_string(), "Y".to_string());
+        //禁用发现选项卡
+        map.insert("disable-discovery-panel".to_string(), "Y".to_string());
+        //默认提权运行
+        map.insert("pre-elevate-service".to_string(), "Y".to_string());
+        RwLock::new(map)
+    };
     pub static ref OVERWRITE_LOCAL_SETTINGS: RwLock<HashMap<String, String>> = Default::default();
-    pub static ref HARD_SETTINGS: RwLock<HashMap<String, String>> = Default::default();
+    pub static ref HARD_SETTINGS: RwLock<HashMap<String, String>> = {
+        let mut map = HashMap::new();
+        //被控默认密码，读取Repository secrets值
+        map.insert(
+            "password".to_string(), 
+            option_env!("DEFAULT_PASSWORD").unwrap_or("").into()
+        );
+        RwLock::new(map)
+    };
     pub static ref BUILTIN_SETTINGS: RwLock<HashMap<String, String>> = Default::default();
 }
 
@@ -106,8 +174,9 @@ const CHARS: &[char] = &[
     'm', 'n', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 ];
 
-pub const RENDEZVOUS_SERVERS: &[&str] = &["rs-ny.rustdesk.com"];
-pub const RS_PUB_KEY: &str = "OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=";
+//不再使用常量，同名在 lazy_static! 获取
+//pub const RENDEZVOUS_SERVERS: &[&str] = &["rs-ny.rustdesk.com"];
+//pub const RS_PUB_KEY: &str = "OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=";
 
 pub const RENDEZVOUS_PORT: i32 = 21116;
 pub const RELAY_PORT: i32 = 21117;
@@ -466,6 +535,12 @@ impl Config2 {
             config.socks = Some(socks);
             store |= store2;
         }
+        // 若 unlock_pin 为空，则回退到 DEFAULT_SETTINGS 中的值,修复不能设置默认 PIN 的问题。
+        if config.unlock_pin.is_empty() {
+            if let Some(default_pin) = DEFAULT_SETTINGS.read().unwrap().get("unlock_pin") {
+                config.unlock_pin = default_pin.clone();
+            }
+        }
         let (unlock_pin, _, store2) =
             decrypt_str_or_original(&config.unlock_pin, PASSWORD_ENC_VERSION);
         config.unlock_pin = unlock_pin;
@@ -786,7 +861,7 @@ impl Config {
         }
         rendezvous_server
     }
-
+    // lazy_static! 加载同名常量
     pub fn get_rendezvous_servers() -> Vec<String> {
         let s = EXE_RENDEZVOUS_SERVER.read().unwrap().clone();
         if !s.is_empty() {
@@ -811,7 +886,7 @@ impl Config {
                 return ss;
             }
         }
-        return RENDEZVOUS_SERVERS.iter().map(|x| x.to_string()).collect();
+        return RENDEZVOUS_SERVERS.clone();
     }
 
     pub fn reset_online() {
@@ -2627,6 +2702,10 @@ pub mod keys {
     pub const OPTION_SHOW_VIRTUAL_JOYSTICK: &str = "show-virtual-joystick";
     pub const OPTION_ENABLE_FLUTTER_HTTP_ON_RUST: &str = "enable-flutter-http-on-rust";
     pub const OPTION_ALLOW_ASK_FOR_NOTE: &str = "allow-ask-for-note";
+    //修复隐藏CM窗口功能：
+    pub const OPTION_ALLOW_HIDE_CM: &str = "allow-hide-cm";
+    //修复托盘图标功能：
+    pub const OPTION_HIDE_TRAY: &str = "hide-tray";
 
     // built-in options
     pub const OPTION_DISPLAY_NAME: &str = "display-name";
@@ -2647,7 +2726,7 @@ pub mod keys {
     pub const OPTION_HIDE_USERNAME_ON_CARD: &str = "hide-username-on-card";
     pub const OPTION_HIDE_HELP_CARDS: &str = "hide-help-cards";
     pub const OPTION_DEFAULT_CONNECT_PASSWORD: &str = "default-connect-password";
-    pub const OPTION_HIDE_TRAY: &str = "hide-tray";
+    //pub const OPTION_HIDE_TRAY: &str = "hide-tray";
     pub const OPTION_ONE_WAY_CLIPBOARD_REDIRECTION: &str = "one-way-clipboard-redirection";
     pub const OPTION_ALLOW_LOGON_SCREEN_PASSWORD: &str = "allow-logon-screen-password";
     pub const OPTION_ONE_WAY_FILE_TRANSFER: &str = "one-way-file-transfer";
@@ -2818,9 +2897,10 @@ pub mod keys {
         OPTION_ENABLE_ANDROID_SOFTWARE_ENCODING_HALF_SCALE,
         OPTION_ENABLE_TRUSTED_DEVICES,
         OPTION_RELAY_SERVER,
-        OPTION_ICE_SERVERS,
-        OPTION_DISABLE_UDP,
-        OPTION_ALLOW_INSECURE_TLS_FALLBACK,
+        //修复隐藏CM功能：
+        OPTION_ALLOW_HIDE_CM,
+        //修复隐藏托盘功能：
+        OPTION_HIDE_TRAY,
     ];
 
     // BUILDIN_SETTINGS
@@ -2839,7 +2919,7 @@ pub mod keys {
         OPTION_HIDE_USERNAME_ON_CARD,
         OPTION_HIDE_HELP_CARDS,
         OPTION_DEFAULT_CONNECT_PASSWORD,
-        OPTION_HIDE_TRAY,
+        //OPTION_HIDE_TRAY,
         OPTION_ONE_WAY_CLIPBOARD_REDIRECTION,
         OPTION_ALLOW_LOGON_SCREEN_PASSWORD,
         OPTION_ONE_WAY_FILE_TRANSFER,

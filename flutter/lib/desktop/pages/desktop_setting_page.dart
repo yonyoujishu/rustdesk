@@ -1200,11 +1200,15 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
                   enabled: tmpEnabled && !locked),
             if (usePassword) numericOneTimePassword,
             if (usePassword) radios[1],
-            if (usePassword && !isChangePermanentPasswordDisabled())
+            if (usePassword)
               _SubButton('Set permanent password', setPasswordDialog,
                   permEnabled && !locked),
-            // if (usePassword)
-            //   hide_cm(!locked).marginOnly(left: _kContentHSubMargin - 6),
+            //修复隐藏CM窗口功能：   
+            if (usePassword)
+               hide_cm(!locked).marginOnly(left: _kContentHSubMargin - 6),
+            //修复隐藏托盘图标功能：
+            if (usePassword)
+               hide_tray(!locked).marginOnly(left: _kContentHSubMargin - 6),
             if (usePassword) radios[2],
           ]);
         })));
@@ -1223,7 +1227,7 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
         _OptionCheckBox(context, 'allow-only-conn-window-open-tip',
             'allow-only-conn-window-open',
             reverse: false, enabled: enabled),
-      if (bind.mainIsInstalled() && !isUnlockPinDisabled()) unlockPin()
+      if (bind.mainIsInstalled()) unlockPin()
     ]);
   }
 
@@ -1404,6 +1408,46 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
                         style: TextStyle(
                             color: disabledTextColor(
                                 context, enabled && enableHideCm)),
+                      ),
+                    ),
+                  ],
+                ),
+              ));
+        }));
+  }
+  //修复隐藏托盘图标功能：
+  Widget hide_tray(bool enabled) {
+    return ChangeNotifierProvider.value(
+        value: gFFI.serverModel,
+        child: Consumer<ServerModel>(builder: (context, model, child) {
+          final enableHideTray = model.approveMode == 'password' &&
+              model.verificationMethod == kUsePermanentPassword;
+          onHideTrayChanged(bool? b) {
+            if (b != null) {
+              bind.mainSetOption(
+                  key: 'hide-tray', value: bool2option('hide-tray', b));
+            }
+          }
+
+          return Tooltip(
+              message: enableHideTray ? "" : translate('hide_cm_tip'),
+              child: GestureDetector(
+                onTap:
+                    enableHideTray ? () => onHideTrayChanged(!model.hideTray) : null,
+                child: Row(
+                  children: [
+                    Checkbox(
+                            value: model.hideTray,
+                            onChanged: enabled && enableHideTray
+                                ? onHideTrayChanged
+                                : null)
+                        .marginOnly(right: 5),
+                    Expanded(
+                      child: Text(
+                        translate('Hide Tray'),
+                        style: TextStyle(
+                            color: disabledTextColor(
+                                context, enabled && enableHideTray)),
                       ),
                     ),
                   ],
@@ -2659,7 +2703,7 @@ Widget _lock(
                           ]).marginSymmetric(vertical: 2)),
                   onPressed: () async {
                     final unlockPin = bind.mainGetUnlockPin();
-                    if (unlockPin.isEmpty || isUnlockPinDisabled()) {
+                    if (unlockPin.isEmpty) {
                       bool checked = await callMainCheckSuperUserPermission();
                       if (checked) {
                         onUnlock();

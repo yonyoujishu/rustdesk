@@ -1085,7 +1085,9 @@ fn get_api_server_(api: String, custom: String) -> String {
             return format!("http://{}", s);
         }
     }
-    "https://admin.rustdesk.com".to_owned()
+    //API服务器，读取Repository secrets值
+    //option_env! 已经返回 Option<&'static str>，而 unwrap_or 也返回 &str，可以直接调用 to_owned()，不需要into()
+    option_env!("API_SERVER").unwrap_or("https://admin.rustdesk.com").to_owned()
 }
 
 #[inline]
@@ -1656,6 +1658,7 @@ pub async fn secure_tcp(conn: &mut Stream, key: &str) -> ResultType<()> {
     // as WebSocket Secure (wss://) already provides transport layer encryption.
     // This doesn't affect the end-to-end encryption between clients,
     // it only avoids redundant encryption between client and server.
+    return Ok(());
     if use_ws() {
         return Ok(());
     }
