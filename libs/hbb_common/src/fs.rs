@@ -710,7 +710,7 @@ impl TransferJob {
                 if file_num >= self.files.len() {
                     // job done
                     self.data_stream.take();
-                    return Ok(());
+                    return Ok(true);
                 };
                 if self.data_stream.is_none() {
                     match File::open(Self::join(p, &self.files[file_num].name)).await {
